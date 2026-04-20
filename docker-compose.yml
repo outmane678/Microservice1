@@ -1,0 +1,50 @@
+version: '3.8'
+
+services:
+  departement-service:
+    build:
+      context: .
+      dockerfile: DepartementService/Dockerfile
+    container_name: departement-service
+    ports:
+      - "5022:80"
+    environment:
+      ConnectionStrings__MyConnection: "Server=10.200.0.222,1433;Database=DepartmentDB;User Id=outmane.elkairi;Password=outmane.elkairi@;TrustServerCertificate=True;"
+
+  employe-service:
+    build:
+      context: .
+      dockerfile: EmployeService/Dockerfile
+    container_name: employe-service
+    ports:
+      - "5245:80"
+    environment:
+      ConnectionStrings__MyConnection: "Server=10.200.0.222,1433;Database=EmployeeDB;User Id=outmane.elkairi;Password=outmane.elkairi@;TrustServerCertificate=True;"
+    depends_on:
+      - departement-service
+
+  useraccount-service:
+    build:
+      context: .
+      dockerfile: UserAccountService/Dockerfile
+    container_name: useraccount-service
+    ports:
+      - "5003:80"
+    environment:
+      ConnectionStrings__MyConnection: "Server=10.200.0.222,1433;Database=UserAccountDB;User Id=outmane.elkairi;Password=outmane.elkairi@;TrustServerCertificate=True;"
+      Jwt__Key: "SuperSecretKeyForJwtToken_MustBeAtLeast32Characters!"
+      Jwt__Issuer: "UserAccountService"
+      Jwt__Audience: "MicroservicesFrontend"
+      Jwt__ExpiresInHours: "24"
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    ports:
+      - "5173:80"
+    depends_on:
+      - employe-service
+      - departement-service
+      - useraccount-service

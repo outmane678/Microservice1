@@ -1,0 +1,30 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.log
+
+## NuGet
+*.nupkg
+packages/
+!**/packages/repositories.config
+.nuget/
+
+## Publish output
+publish/
+TestResults/
+
+## Node / Frontend
+node_modules/
+dist/
+
+## IDE
+.idea/
+*.swp
+*.swo
+
+## OS
+Thumbs.db
+.DS_Store
