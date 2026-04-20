@@ -1,35 +1,30 @@
 pipeline {
     agent any
 
-    // Test push: ajout d'une ligne de commentaire pour valider le commit/push
     triggers {
         githubPush()
     }
 
     environment {
-        DEPLOY_ROOT  = "C:\\inetpub\\wwwroot"
         DEPT_SERVICE = "DepartementService"
         DEPT_TESTS   = "DepartementService.Tests"
         EMP_SERVICE  = "EmployeService"
         EMP_TESTS    = "EmployeService.Tests"
-        DEPT_POOL    = "DepartementServicePool"
-        EMP_POOL     = "EmployeServicePool"
+        AUTH_SERVICE = "UserAccountService"
+        DEPT_IMAGE   = "departementservice"
+        EMP_IMAGE    = "employeservice"
+        AUTH_IMAGE   = "useraccountservice"
     }
 
     stages {
-
-        stage('Pipeline Info') {
-            steps {
-                echo "Build #${env.BUILD_NUMBER} on branch: ${env.BRANCH_NAME ?: 'main'}"
-                bat 'dotnet --version'
-            }
-        }
 
         stage('Checkout') {
             steps {
                 checkout scm
             }
         }
+
+        // ==================== BUILD & TEST .NET ====================
 
         stage('Restore') {
             steps {
@@ -51,6 +46,11 @@ pipeline {
                         bat "dotnet build %EMP_TESTS%\\%EMP_TESTS%.csproj -c Release --no-restore"
                     }
                 }
+                stage('Build UserAccountService') {
+                    steps {
+                        bat "dotnet build %AUTH_SERVICE%\\%AUTH_SERVICE%.csproj -c Release --no-restore"
+                    }
+                }
             }
         }
 
@@ -69,79 +69,69 @@ pipeline {
             }
         }
 
-        stage('Publish') {
+        // ==================== DOCKER BUILD ====================
+
+        stage('Docker Build') {
             parallel {
-                stage('Publish DepartementService') {
+                stage('Docker Build DepartementService') {
                     steps {
-                        bat "dotnet publish %DEPT_SERVICE%\\%DEPT_SERVICE%.csproj -c Release --no-build -o publish\\%DEPT_SERVICE%"
+                        bat "docker build -t %DEPT_IMAGE%:latest -f %DEPT_SERVICE%\\Dockerfile ."
                     }
                 }
-                stage('Publish EmployeService') {
+                stage('Docker Build EmployeService') {
                     steps {
-                        bat "dotnet publish %EMP_SERVICE%\\%EMP_SERVICE%.csproj -c Release --no-build -o publish\\%EMP_SERVICE%"
+                        bat "docker build -t %EMP_IMAGE%:latest -f %EMP_SERVICE%\\Dockerfile ."
+                    }
+                }
+                stage('Docker Build UserAccountService') {
+                    steps {
+                        bat "docker build -t %AUTH_IMAGE%:latest -f %AUTH_SERVICE%\\Dockerfile ."
                     }
                 }
             }
         }
 
-        stage('Stop IIS Pools') {
-            parallel {
-                stage('Stop DepartementService Pool') {
-                    steps {
-                        bat 'powershell -Command "Import-Module WebAdministration; try { Stop-WebAppPool -Name \'%DEPT_POOL%\'; Start-Sleep -Seconds 3 } catch { Write-Host \'Pool %DEPT_POOL% not found - skipping stop\' }"'
-                    }
-                }
-                stage('Stop EmployeService Pool') {
-                    steps {
-                        bat 'powershell -Command "Import-Module WebAdministration; try { Stop-WebAppPool -Name \'%EMP_POOL%\'; Start-Sleep -Seconds 3 } catch { Write-Host \'Pool %EMP_POOL% not found - skipping stop\' }"'
-                    }
-                }
+        // ==================== DOCKER TEST ====================
+
+        stage('Docker Test') {
+            steps {
+                bat 'docker rm -f %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
+                bat "docker run -d --name %DEPT_IMAGE%-test -p 6001:8080 %DEPT_IMAGE%:latest"
+                bat "docker run -d --name %EMP_IMAGE%-test -p 6002:8080 %EMP_IMAGE%:latest"
+                bat "docker run -d --name %AUTH_IMAGE%-test -p 6003:8080 %AUTH_IMAGE%:latest"
+                bat 'ping -n 6 127.0.0.1 >nul'
+                bat 'curl -f http://localhost:6001/weatherforecast || exit /b 1'
+                bat 'curl -f http://localhost:6002/weatherforecast || exit /b 1'
+                bat 'curl -f http://localhost:6003/weatherforecast || exit /b 1'
+                echo 'All three containers responded HTTP 200.'
+                bat 'docker stop %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
+                bat 'docker rm %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
             }
         }
 
-        stage('Deploy Files') {
-            parallel {
-                stage('Deploy DepartementService') {
-                    steps {
-                        bat """
-                            robocopy publish\\%DEPT_SERVICE% %DEPLOY_ROOT%\\%DEPT_SERVICE% /MIR /R:3 /W:5
-                            if %ERRORLEVEL% LEQ 7 exit /b 0
-                        """
-                    }
-                }
-                stage('Deploy EmployeService') {
-                    steps {
-                        bat """
-                            robocopy publish\\%EMP_SERVICE% %DEPLOY_ROOT%\\%EMP_SERVICE% /MIR /R:3 /W:5
-                            if %ERRORLEVEL% LEQ 7 exit /b 0
-                        """
-                    }
-                }
-            }
-        }
+        // ==================== DOCKER DEPLOY ====================
 
-        stage('Start IIS Pools') {
-            parallel {
-                stage('Start DepartementService Pool') {
-                    steps {
-                        bat 'powershell -Command "Import-Module WebAdministration; if (-not (Test-Path \"IIS:\\AppPools\\%DEPT_POOL%\")) { New-WebAppPool -Name \'%DEPT_POOL%\'; Set-ItemProperty \"IIS:\\AppPools\\%DEPT_POOL%\" -Name managedRuntimeVersion -Value \'\' }; Start-WebAppPool -Name \'%DEPT_POOL%\'"'
-                    }
-                }
-                stage('Start EmployeService Pool') {
-                    steps {
-                        bat 'powershell -Command "Import-Module WebAdministration; if (-not (Test-Path \"IIS:\\AppPools\\%EMP_POOL%\")) { New-WebAppPool -Name \'%EMP_POOL%\'; Set-ItemProperty \"IIS:\\AppPools\\%EMP_POOL%\" -Name managedRuntimeVersion -Value \'\' }; Start-WebAppPool -Name \'%EMP_POOL%\'"'
-                    }
-                }
+        stage('Deploy with Docker Compose') {
+            steps {
+                bat 'docker-compose down --remove-orphans 2>nul || exit /b 0'
+                bat 'docker rm -f departementservice employeservice useraccountservice nginx-proxy 2>nul || exit /b 0'
+                bat 'docker-compose up -d'
+                bat 'ping -n 6 127.0.0.1 >nul'
+                bat 'curl -f http://localhost:9090/DepartementService/weatherforecast || exit /b 1'
+                bat 'curl -f http://localhost:9090/EmployeService/weatherforecast || exit /b 1'
+                bat 'curl -f http://localhost:9090/UserAccountService/weatherforecast || exit /b 1'
+                echo 'Docker Compose deployment verified - all services running behind Nginx.'
             }
         }
     }
 
     post {
         always {
-            cleanWs()
+            bat 'docker stop %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
+            bat 'docker rm %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
         }
         success {
-            echo 'Pipeline succeeded - both services deployed to IIS. [v4]'
+            echo 'Pipeline succeeded - services deployed with Docker Compose.'
         }
         failure {
             echo 'Pipeline failed - check stage logs for details.'

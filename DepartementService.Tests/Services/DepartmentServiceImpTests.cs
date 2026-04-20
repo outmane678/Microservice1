@@ -8,17 +8,13 @@ namespace DepartementService.Tests.Services;
 
 public class DepartmentServiceImpTests : IDisposable
 {
-    private const string ConnStr =
-        "Server=localhost\\SQLEXPRESS;Database=DepartmentDB;User Id=sa;Password=123456789;TrustServerCertificate=True;";
-
     private readonly AppDbContext _context;
     private readonly DepartmentServiceImp _sut;
-    private readonly List<Guid> _createdIds = new();
 
     public DepartmentServiceImpTests()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(ConnStr)
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _context = new AppDbContext(options);
         _sut = new DepartmentServiceImp(_context);
@@ -26,13 +22,6 @@ public class DepartmentServiceImpTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var id in _createdIds)
-        {
-            var entity = _context.Departments.Find(id);
-            if (entity != null)
-                _context.Departments.Remove(entity);
-        }
-        _context.SaveChanges();
         _context.Dispose();
     }
 
@@ -41,7 +30,6 @@ public class DepartmentServiceImpTests : IDisposable
         var dept = new Department { Name = name };
         _context.Departments.Add(dept);
         _context.SaveChanges();
-        _createdIds.Add(dept.Id);
         return dept;
     }
 
@@ -55,7 +43,6 @@ public class DepartmentServiceImpTests : IDisposable
 
         // Act
         var result = _sut.CreateDepartment(dto);
-        _createdIds.Add(result.Id);
 
         // Assert
         Assert.NotEqual(Guid.Empty, result.Id);
@@ -81,7 +68,6 @@ public class DepartmentServiceImpTests : IDisposable
     [Fact]
     public void UpadateDepartment_Should_Throw_When_Invalid_Id()
     {
-        // Arrange & Act & Assert
         var ex = Assert.Throws<Exception>(
             () => _sut.UpadateDepartment(Guid.NewGuid(), new DepartmentUpdate { Name = "X" }));
 
@@ -99,7 +85,6 @@ public class DepartmentServiceImpTests : IDisposable
 
         // Act
         _sut.DeleteDepartment(id);
-        _createdIds.Remove(id);
 
         // Assert
         Assert.Null(_context.Departments.Find(id));
@@ -108,7 +93,6 @@ public class DepartmentServiceImpTests : IDisposable
     [Fact]
     public void DeleteDepartment_Should_Throw_When_Invalid_Id()
     {
-        // Arrange & Act & Assert
         var ex = Assert.Throws<Exception>(() => _sut.DeleteDepartment(Guid.NewGuid()));
 
         Assert.Contains("n'a pas été trouvé", ex.Message);
@@ -133,10 +117,8 @@ public class DepartmentServiceImpTests : IDisposable
     [Fact]
     public void FindDepartmentById_Should_Return_Null_When_Not_Exists()
     {
-        // Arrange & Act
         var result = _sut.FindDepartmentById(Guid.NewGuid());
 
-        // Assert
         Assert.Null(result);
     }
 

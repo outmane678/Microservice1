@@ -11,19 +11,15 @@ namespace EmployeService.Tests.Services;
 
 public class EmployeeServiceImpTests : IDisposable
 {
-    private const string ConnStr =
-        "Server=localhost\\SQLEXPRESS;Database=EmployeeDB;User Id=sa;Password=123456789;TrustServerCertificate=True";
-
     private readonly AppDbContext _context;
     private readonly Mock<IDepartmentAPI> _api;
     private readonly Mock<IEmailSender> _email;
     private readonly EmployeeServiceImp _sut;
-    private readonly List<Guid> _createdIds = new();
 
     public EmployeeServiceImpTests()
     {
         var options = new DbContextOptionsBuilder<AppDbContext>()
-            .UseSqlServer(ConnStr)
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
             .Options;
         _context = new AppDbContext(options);
         _api = new Mock<IDepartmentAPI>();
@@ -33,13 +29,6 @@ public class EmployeeServiceImpTests : IDisposable
 
     public void Dispose()
     {
-        foreach (var id in _createdIds)
-        {
-            var entity = _context.Employees.Find(id);
-            if (entity != null)
-                _context.Employees.Remove(entity);
-        }
-        _context.SaveChanges();
         _context.Dispose();
     }
 
@@ -52,7 +41,6 @@ public class EmployeeServiceImpTests : IDisposable
         };
         _context.Employees.Add(emp);
         _context.SaveChanges();
-        _createdIds.Add(emp.Id);
         return emp;
     }
 
@@ -69,7 +57,6 @@ public class EmployeeServiceImpTests : IDisposable
 
         // Act
         var result = await _sut.CreateEmployee(dto);
-        _createdIds.Add(result.Id);
 
         // Assert
         Assert.NotEqual(Guid.Empty, result.Id);
@@ -111,7 +98,6 @@ public class EmployeeServiceImpTests : IDisposable
     [Fact]
     public async Task GetEmployeeById_Should_Throw_When_Not_Found()
     {
-        // Arrange & Act & Assert
         await Assert.ThrowsAsync<Exception>(() => _sut.GetEmployeeById(Guid.NewGuid()));
     }
 
@@ -151,7 +137,6 @@ public class EmployeeServiceImpTests : IDisposable
     [Fact]
     public async Task UpdateEmployee_Should_Throw_When_Not_Found()
     {
-        // Arrange & Act & Assert
         await Assert.ThrowsAsync<Exception>(
             () => _sut.UpdateEmployee(Guid.NewGuid(), new EmployeeUpdate("A", "B", "a@b.com", null, DateTime.Today, "Dev")));
     }
@@ -167,7 +152,6 @@ public class EmployeeServiceImpTests : IDisposable
 
         // Act
         await _sut.DeleteEmployee(id);
-        _createdIds.Remove(id);
 
         // Assert
         Assert.Null(await _context.Employees.FindAsync(id));
@@ -176,7 +160,6 @@ public class EmployeeServiceImpTests : IDisposable
     [Fact]
     public async Task DeleteEmployee_Should_Throw_When_Not_Found()
     {
-        // Arrange & Act & Assert
         await Assert.ThrowsAsync<Exception>(() => _sut.DeleteEmployee(Guid.NewGuid()));
     }
 
@@ -195,7 +178,6 @@ public class EmployeeServiceImpTests : IDisposable
         };
         _context.Employees.Add(emp);
         await _context.SaveChangesAsync();
-        _createdIds.Add(emp.Id);
 
         // Act
         var result = await _sut.GetEmployeeByTokenAsync(token);
@@ -207,7 +189,6 @@ public class EmployeeServiceImpTests : IDisposable
     [Fact]
     public async Task GetEmployeeByTokenAsync_Should_Throw_For_Invalid_Token()
     {
-        // Arrange & Act & Assert
         var ex = await Assert.ThrowsAsync<Exception>(() => _sut.GetEmployeeByTokenAsync("bad_token"));
         Assert.Contains("Token invalide", ex.Message);
     }
@@ -226,7 +207,6 @@ public class EmployeeServiceImpTests : IDisposable
         };
         _context.Employees.Add(emp);
         await _context.SaveChangesAsync();
-        _createdIds.Add(emp.Id);
 
         // Act
         await _sut.VerifyEmployeeAsync(emp.Id);
@@ -240,7 +220,6 @@ public class EmployeeServiceImpTests : IDisposable
     [Fact]
     public async Task VerifyEmployeeAsync_Should_Throw_When_Not_Found()
     {
-        // Arrange & Act & Assert
         await Assert.ThrowsAsync<Exception>(() => _sut.VerifyEmployeeAsync(Guid.NewGuid()));
     }
 }
