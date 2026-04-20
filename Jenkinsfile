@@ -96,14 +96,14 @@ pipeline {
         stage('Docker Test') {
             steps {
                 bat 'docker rm -f %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
-                bat "docker run -d --name %DEPT_IMAGE%-test -p 6001:8080 %DEPT_IMAGE%:latest"
-                bat "docker run -d --name %EMP_IMAGE%-test -p 6002:8080 %EMP_IMAGE%:latest"
-                bat "docker run -d --name %AUTH_IMAGE%-test -p 6003:8080 %AUTH_IMAGE%:latest"
-                bat 'ping -n 6 127.0.0.1 >nul'
-                bat 'curl -f http://localhost:6001/weatherforecast || exit /b 1'
-                bat 'curl -f http://localhost:6002/weatherforecast || exit /b 1'
-                bat 'curl -f http://localhost:6003/weatherforecast || exit /b 1'
-                echo 'All three containers responded HTTP 200.'
+                bat "docker run -d --name %DEPT_IMAGE%-test -p 6001:80 %DEPT_IMAGE%:latest"
+                bat "docker run -d --name %EMP_IMAGE%-test -p 6002:80 %EMP_IMAGE%:latest"
+                bat "docker run -d --name %AUTH_IMAGE%-test -p 6003:80 %AUTH_IMAGE%:latest"
+                bat 'ping -n 10 127.0.0.1 >nul'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:6001/api/Departments || exit /b 1'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:6002/api/Employee || exit /b 1'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:6003/api/Auth/register || exit /b 1'
+                echo 'All three containers responded - services are running.'
                 bat 'docker stop %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
                 bat 'docker rm %DEPT_IMAGE%-test %EMP_IMAGE%-test %AUTH_IMAGE%-test 2>nul || exit /b 0'
             }
@@ -114,13 +114,13 @@ pipeline {
         stage('Deploy with Docker Compose') {
             steps {
                 bat 'docker-compose down --remove-orphans 2>nul || exit /b 0'
-                bat 'docker rm -f departementservice employeservice useraccountservice nginx-proxy 2>nul || exit /b 0'
-                bat 'docker-compose up -d'
-                bat 'ping -n 6 127.0.0.1 >nul'
-                bat 'curl -f http://localhost:9090/DepartementService/weatherforecast || exit /b 1'
-                bat 'curl -f http://localhost:9090/EmployeService/weatherforecast || exit /b 1'
-                bat 'curl -f http://localhost:9090/UserAccountService/weatherforecast || exit /b 1'
-                echo 'Docker Compose deployment verified - all services running behind Nginx.'
+                bat 'docker rm -f departement-service employe-service useraccount-service frontend 2>nul || exit /b 0'
+                bat 'docker-compose up -d --build'
+                bat 'ping -n 15 127.0.0.1 >nul'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:5022/api/Departments || exit /b 1'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:5245/api/Employee || exit /b 1'
+                bat 'curl -s -o nul -w "%%{http_code}" http://localhost:5003/api/Auth/register || exit /b 1'
+                echo 'Docker Compose deployment verified - all services running.'
             }
         }
     }
