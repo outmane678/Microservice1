@@ -13,6 +13,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DepartementService.Tests", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserAccountService", "UserAccountService\UserAccountService.csproj", "{A4239FAA-BB70-480C-9A77-B1D0C3E073F8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UserAccountService.Tests", "UserAccountService.Tests\UserAccountService.Tests.csproj", "{759E7669-B923-4F97-BD19-63989B294842}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -83,6 +85,18 @@ Global
 		{A4239FAA-BB70-480C-9A77-B1D0C3E073F8}.Release|x64.Build.0 = Release|Any CPU
 		{A4239FAA-BB70-480C-9A77-B1D0C3E073F8}.Release|x86.ActiveCfg = Release|Any CPU
 		{A4239FAA-BB70-480C-9A77-B1D0C3E073F8}.Release|x86.Build.0 = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|x64.Build.0 = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Debug|x86.Build.0 = Debug|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|Any CPU.Build.0 = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|x64.ActiveCfg = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|x64.Build.0 = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|x86.ActiveCfg = Release|Any CPU
+		{759E7669-B923-4F97-BD19-63989B294842}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

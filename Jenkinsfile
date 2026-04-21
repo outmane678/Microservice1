@@ -11,6 +11,7 @@ pipeline {
         EMP_SERVICE  = "EmployeService"
         EMP_TESTS    = "EmployeService.Tests"
         AUTH_SERVICE = "UserAccountService"
+        AUTH_TESTS   = "UserAccountService.Tests"
         DEPT_IMAGE   = "departementservice"
         EMP_IMAGE    = "employeservice"
         AUTH_IMAGE   = "useraccountservice"
@@ -49,6 +50,7 @@ pipeline {
                 stage('Build UserAccountService') {
                     steps {
                         bat "dotnet build %AUTH_SERVICE%\\%AUTH_SERVICE%.csproj -c Release --no-restore"
+                        bat "dotnet build %AUTH_TESTS%\\%AUTH_TESTS%.csproj -c Release --no-restore"
                     }
                 }
             }
@@ -64,6 +66,11 @@ pipeline {
                 stage('Test EmployeService') {
                     steps {
                         bat "dotnet test %EMP_TESTS%\\%EMP_TESTS%.csproj -c Release --no-build --logger trx --results-directory TestResults\\%EMP_SERVICE%"
+                    }
+                }
+                stage('Test UserAccountService') {
+                    steps {
+                        bat "dotnet test %AUTH_TESTS%\\%AUTH_TESTS%.csproj -c Release --no-build --logger trx --results-directory TestResults\\%AUTH_SERVICE%"
                     }
                 }
             }
